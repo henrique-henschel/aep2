@@ -75,7 +75,7 @@ Defina, por exemplo, a tensão mínima que deve ser considerada falha antes de d
   - Banco de Dados: **H2** (em memória) ou **SQLite** (persistente em arquivo)
 - **Front-end**
   - Linguagens: **HTML**, **CSS** e **JavaScript**
-  - Comunicação:  **Axios/Fetch** para consumir a API REST do back-end
+  - Comunicação: `fetch()` (função do JavaScript) para consumir a API REST do back-end
   - Ferramentas adicionais (**opcionais**): **React** ou **Angular**. **Leaflet** ou **OpenLayers** para renderizar o mapa interativo da cidade
 - **Outras Ferramentas**
   - **Maven** (build e gerenciamento de dependências Java)
