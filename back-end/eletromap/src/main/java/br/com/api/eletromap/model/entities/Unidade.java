@@ -1,10 +1,13 @@
 package br.com.api.eletromap.model.entities;
 
 import br.com.api.eletromap.model.enums.Status;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 
 import java.util.List;
 
@@ -18,7 +21,6 @@ public class Unidade {
     private Status status;
     @OneToMany(mappedBy = "origem", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Conexao> conexoes;
-
 
     public Unidade() {
         // Construtor padrao para a JPA
