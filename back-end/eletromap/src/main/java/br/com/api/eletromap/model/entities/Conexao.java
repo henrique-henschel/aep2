@@ -1,45 +1,40 @@
-package br.com.api.eletromap.model.entities;
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-
 @Entity
-public abstract class Conexao {
+public class Conexao {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long idOrigem;
-    private Long idDestino;
+    @ManyToOne
+    private Unidade origem;
 
-    public Conexao() {
-        // Construtor padrao para a JPA
-    }
+    @ManyToOne
+    private Unidade destino;
 
-    public Conexao(Long idOrigem, Long idDestino) {
-        this.idOrigem = idOrigem;
-        this.idDestino = idDestino;
+    public Conexao() {}
+
+    public Conexao(Unidade origem, Unidade destino) {
+        this.origem = origem;
+        this.destino = destino;
     }
 
     public Long getId() {
-        return this.id;
+        return id;
     }
 
-    public Long getIdOrigem() {
-        return this.idOrigem;
+    public Unidade getOrigem() {
+        return origem;
     }
 
-    public void setIdOrigem(Long idOrigem) {
-        this.idOrigem = idOrigem;
+    public void setOrigem(Unidade origem) {
+        this.origem = origem;
     }
 
-    public Long getIdDestino() {
-        return this.idDestino;
+    public Unidade getDestino() {
+        return destino;
     }
 
-    public void setIdDestino(Long idDestino) {
-        this.idDestino = idDestino;
+    public void setDestino(Unidade destino) {
+        this.destino = destino;
     }
 }
