@@ -16,7 +16,9 @@ public class Unidade {
 
     private String endereco;
     private Status status;
+    @OneToMany(mappedBy = "origem", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Conexao> conexoes;
+
 
     public Unidade() {
         // Construtor padrao para a JPA
