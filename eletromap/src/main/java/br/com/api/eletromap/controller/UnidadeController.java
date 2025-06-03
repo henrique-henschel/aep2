@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
+@RequestMapping("/unidades")
 public class UnidadeController {
     private final UnidadeRepository unidadeRepository;
 
@@ -15,17 +16,17 @@ public class UnidadeController {
         this.unidadeRepository = unidadeRepository;
     }
 
-    @GetMapping("/unidades")
+    @GetMapping
     public List<Unidade> findAll() {
         return this.unidadeRepository.findAll();
     }
 
-    @GetMapping("/unidades/{id}")
+    @GetMapping("/{id}")
     public Unidade findById(@PathVariable Long id) {
         return this.unidadeRepository.findById(id).orElse(null);
     }
 
-    @PostMapping("/unidades")
+    @PostMapping
     public Unidade save(@RequestBody UnidadeDto unidadeDto) {
         Unidade novaUnidade = new Unidade(
             unidadeDto.endereco(),
@@ -35,7 +36,7 @@ public class UnidadeController {
         return this.unidadeRepository.save(novaUnidade);
     }
 
-    @PutMapping("/unidades/{id}")
+    @PutMapping("/{id}")
     public Unidade update(@PathVariable Long id, @RequestBody UnidadeDto unidadeDto) {
         Unidade unidade = this.unidadeRepository.findById(id).orElse(null);
         if (unidade != null) {
@@ -49,7 +50,7 @@ public class UnidadeController {
         return null;
     }
 
-    @DeleteMapping("/unidades/{id}")
+    @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
         this.unidadeRepository.deleteById(id);
     }

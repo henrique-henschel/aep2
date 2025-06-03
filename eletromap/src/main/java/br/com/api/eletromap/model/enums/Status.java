@@ -1,8 +1,8 @@
 package br.com.api.eletromap.model.enums;
 
 public enum Status {
-    NORMAL,
-    FALHA,
+    ATIVO,
+    INATIVO,
     EM_MANUTENCAO,
     INDETERMINADO
 }

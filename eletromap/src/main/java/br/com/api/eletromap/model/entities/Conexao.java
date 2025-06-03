@@ -19,7 +19,9 @@ public class Conexao {
     @ManyToOne
     private Unidade destino;
 
-    public Conexao() {}
+    public Conexao() {
+        // Construtor padrão para a JPA
+    }
 
     public Conexao(Unidade origem, Unidade destino) {
         this.origem = origem;

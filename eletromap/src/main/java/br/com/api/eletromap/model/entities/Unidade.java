@@ -13,12 +13,14 @@ import java.util.List;
 
 @Entity
 public class Unidade {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String endereco;
     private Status status;
+
     @OneToMany(mappedBy = "origem", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Conexao> conexoes;
 
@@ -28,7 +30,7 @@ public class Unidade {
 
     public Unidade(String endereco, List<Conexao> conexoes) {
         this.endereco = endereco;
-        this.status = Status.NORMAL;
+        this.status = Status.ATIVO;
         this.conexoes = conexoes;
     }
 
