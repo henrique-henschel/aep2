@@ -26,7 +26,10 @@ public class UnidadeController {
     public ResponseEntity<Unidade> criarUnidade(@RequestBody UnidadeDto unidadeDto) {
         // Cria uma nova instância de Unidade a partir do DTO
         Unidade novaUnidade = new Unidade(unidadeDto.endereco());
-        novaUnidade.setStatus(unidadeDto.status()); // Define o status a partir do DTO
+        
+        if (unidadeDto.status() != null) {
+            novaUnidade.setStatus(unidadeDto.status());
+        }
 
         Unidade salva = this.unidadeRepository.save(novaUnidade);
         return ResponseEntity.ok(salva);
