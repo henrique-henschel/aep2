@@ -1,0 +1,18 @@
+meta {
+  name: POST /conexoes
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://localhost:8080/conexoes
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "unidadeOrigemId": 1,
+    "unidadeDestinoId": 2
+  }
+}
