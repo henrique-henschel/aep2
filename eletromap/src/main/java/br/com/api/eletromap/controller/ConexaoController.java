@@ -1,5 +1,6 @@
 package br.com.api.eletromap.controller;
 
+import br.com.api.eletromap.model.dtos.ConexaoCreationDto;
 import br.com.api.eletromap.model.entities.Conexao;
 import br.com.api.eletromap.model.entities.Unidade;
 import br.com.api.eletromap.repository.ConexaoRepository;
@@ -27,10 +28,9 @@ public class ConexaoController {
     // Criar nova conexão
     // Recebe os IDs da origem e destino para criar a conexão
     @PostMapping
-    public ResponseEntity<Conexao> criarConexao(@RequestParam Long origemId,
-                                                @RequestParam Long destinoId) {
-        Optional<Unidade> optionalOrigem = unidadeRepository.findById(origemId);
-        Optional<Unidade> optionalDestino = unidadeRepository.findById(destinoId);
+    public ResponseEntity<Conexao> criarConexao(@RequestBody ConexaoCreationDto dto) {
+        Optional<Unidade> optionalOrigem = unidadeRepository.findById(dto.unidadeOrigemId());
+        Optional<Unidade> optionalDestino = unidadeRepository.findById(dto.unidadeDestinoId());
 
         if (optionalOrigem.isEmpty() || optionalDestino.isEmpty()) {
             // Se uma das unidades não for encontrada, retorna erro
