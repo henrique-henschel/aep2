@@ -54,6 +54,11 @@ body {
     background-color: #003366;
 }
 
+.btn-gerenciar .ir-para-login {
+    text-decoration: none;
+    color: #fff;
+}
+
 /* --- Barra Lateral --- */
 .sidebar {
     grid-area: sidebar;

@@ -52,6 +52,13 @@ body {
     outline: none;
 }
 
+#errorMessage {
+    color: #d93025;
+    text-align: center;
+    height: 20px;
+    font-size: 14px;
+}
+
 button {
     width: 100%;
     padding: 0.75rem;
