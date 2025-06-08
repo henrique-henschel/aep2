@@ -16,6 +16,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // --- FIM da lógica de verificação de login
 
+    // --- NOVO BLOCO DE INICIALIZAÇÃO DO MAPA ---
+    // Coordenadas aproximadas do centro de Maringá, PR
+    const maringaCoords = [-23.425, -51.938]; 
+    const initialZoom = 13;
+
+    // Inicializa o mapa e o centraliza em Maringá
+    const map = L.map('map').setView(maringaCoords, initialZoom);
+
+    // Adiciona a camada de "azulejos" do mapa (o visual das ruas, etc.)
+    // Usaremos o OpenStreetMap, que é gratuito e de código aberto
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    // Exemplo: Adiciona um marcador no centro do mapa para simular uma unidade
+    L.marker(maringaCoords).addTo(map)
+        .bindPopup('<b>Centro de Maringá</b><br>Aqui poderia ser uma unidade.')
+        .openPopup();
+    // --- FIM DO NOVO BLOCO ---
+
     // Define a URL base da API e seleciona o elemento da lista no HTML
     const apiUrl = '/unidades';
     const listaUnidadesElement = document.getElementById('lista-unidades');
