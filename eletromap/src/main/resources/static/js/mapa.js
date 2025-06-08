@@ -1,6 +1,21 @@
 // Aguarda o conteúdo do HTML ser totalmente carregado antes de executar o script
 document.addEventListener('DOMContentLoaded', () => {
 
+    // --- INÍCIO da lógica de verificação de login
+    const gerenciarBtn = document.getElementById('btn-gerenciar-unidades');
+    const isAdmin = sessionStorage.getItem('isAdmin');
+
+    // Se o usuário for admin, mostra o botão de gerenciamento
+    if (isAdmin === 'true') {
+        gerenciarBtn.style.display = 'inline-flex'; // ou 'block'
+        
+        // Adiciona o link para a página de admin
+        gerenciarBtn.addEventListener('click', () => {
+            window.location.href = 'admin.html';
+        });
+    }
+    // --- FIM da lógica de verificação de login
+
     // Define a URL base da API e seleciona o elemento da lista no HTML
     const apiUrl = '/unidades';
     const listaUnidadesElement = document.getElementById('lista-unidades');

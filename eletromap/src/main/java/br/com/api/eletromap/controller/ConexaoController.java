@@ -1,6 +1,7 @@
 package br.com.api.eletromap.controller;
 
 import br.com.api.eletromap.model.dtos.ConexaoCreationDto;
+import br.com.api.eletromap.model.dtos.ConexaoDto;
 import br.com.api.eletromap.model.entities.Conexao;
 import br.com.api.eletromap.model.entities.Unidade;
 import br.com.api.eletromap.repository.ConexaoRepository;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/conexoes")
@@ -25,49 +27,43 @@ public class ConexaoController {
         this.unidadeRepository = unidadeRepository;
     }
 
-    // Criar nova conexão
-    // Recebe os IDs da origem e destino para criar a conexão
+    // --- MÉTODO DE CRIAÇÃO CORRIGIDO ---
     @PostMapping
-    public ResponseEntity<Conexao> criarConexao(@RequestBody ConexaoCreationDto dto) {
+    public ResponseEntity<ConexaoDto> criarConexao(@RequestBody ConexaoCreationDto dto) {
         Optional<Unidade> optionalOrigem = unidadeRepository.findById(dto.unidadeOrigemId());
         Optional<Unidade> optionalDestino = unidadeRepository.findById(dto.unidadeDestinoId());
 
         if (optionalOrigem.isEmpty() || optionalDestino.isEmpty()) {
-            // Se uma das unidades não for encontrada, retorna erro
             return ResponseEntity.badRequest().build();
         }
 
-        Unidade origem = optionalOrigem.get();
-        Unidade destino = optionalDestino.get();
-
-        // Cria a nova conexão
-        Conexao novaConexao = new Conexao(origem, destino);
-
-        // Salva a conexão no banco de dados
+        Conexao novaConexao = new Conexao(optionalOrigem.get(), optionalDestino.get());
         Conexao salva = conexaoRepository.save(novaConexao);
 
-        // Opcional: Atualizar as listas de conexões nas unidades (se necessário carregá-las imediatamente)
-        // Isso é normalmente tratado automaticamente pela JPA com mappedBy se os relacionamentos estão bem definidos
-        // origem.getConexoesDeOrigem().add(salva);
-        // destino.getConexoesDeDestino().add(salva);
-        // unidadeRepository.save(origem);
-        // unidadeRepository.save(destino);
+        // Converte a entidade salva para um DTO simples antes de retornar
+        ConexaoDto respostaDto = new ConexaoDto(salva.getId(), salva.getOrigem().getId(), salva.getDestino().getId());
 
-        return ResponseEntity.ok(salva);
+        return ResponseEntity.ok(respostaDto);
     }
 
     // Listar todas as conexões
+    // --- MÉTODO DE LISTAGEM CORRIGIDO ---
     @GetMapping
-    public ResponseEntity<List<Conexao>> listarConexoes() {
+    public ResponseEntity<List<ConexaoDto>> listarConexoes() {
         List<Conexao> conexoes = conexaoRepository.findAll();
-        return ResponseEntity.ok(conexoes);
+        // Converte a lista de entidades para uma lista de DTOs
+        List<ConexaoDto> dtos = conexoes.stream()
+                .map(c -> new ConexaoDto(c.getId(), c.getOrigem().getId(), c.getDestino().getId()))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
     }
 
     // Buscar por ID
     @GetMapping("/{id}")
-    public ResponseEntity<Conexao> buscarPorId(@PathVariable Long id) {
-        Optional<Conexao> conexao = conexaoRepository.findById(id);
-        return conexao.map(ResponseEntity::ok)
+    public ResponseEntity<ConexaoDto> buscarPorId(@PathVariable Long id) {
+        return conexaoRepository.findById(id)
+                .map(conexao -> new ConexaoDto(conexao.getId(), conexao.getOrigem().getId(), conexao.getDestino().getId()))
+                .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 

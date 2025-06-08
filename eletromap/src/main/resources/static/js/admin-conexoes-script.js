@@ -1,159 +1,233 @@
-// --- Variáveis Globais ---
-let allConexoes = [];
-let filteredConexoes = [];
-let allUnits = []; // Para popular os selects do modal
-let currentDeletingId = null;
+/**
+ * Script para gerenciar a página de Conexões (admin-conexoes.html)
+ * Realiza as operações de CRUD para conexões, comunicando-se com a API REST.
+ */
 
-const conexoesApiUrl = '/conexoes';
-const unidadesApiUrl = '/unidades'; // Precisamos buscar as unidades para o formulário
+// --- Bloco de Configuração e Estado Global ---
 
-// --- Elementos do DOM ---
-const elements = {
-    // Filtros
-    searchInput: document.getElementById('search-unit-id'),
-    sortBy: document.getElementById('sort-by'),
-    
-    // Tabela e Contagem
-    conexoesTableBody: document.getElementById('conexoes-table-body'),
-    conexoesCount: document.getElementById('conexoes-count'),
-    
-    // Botões Principais
-    addConexaoBtn: document.getElementById('btn-add-conexao'),
-    
-    // Modal de Adicionar Conexão
-    conexaoModal: document.getElementById('conexao-modal'),
-    conexaoForm: document.getElementById('conexao-form'),
-    origemSelect: document.getElementById('conexao-origem'),
-    destinoSelect: document.getElementById('conexao-destino'),
-    closeModalBtn: document.getElementById('close-modal'),
-    cancelModalBtn: document.getElementById('cancel-modal'),
-    
-    // Modal de Excluir
-    deleteModal: document.getElementById('delete-modal'),
-    cancelDeleteBtn: document.getElementById('cancel-delete'),
-    confirmDeleteBtn: document.getElementById('confirm-delete'),
+// 1. Configuração da API (A CORREÇÃO MAIS IMPORTANTE)
+// Define a URL base completa do seu servidor back-end.
+const API_BASE_URL = 'http://localhost:8080';
+const CONEXOES_API_URL = `${API_BASE_URL}/conexoes`;
+const UNIDADES_API_URL = `${API_BASE_URL}/unidades`;
 
-    // Notificações
-    toastContainer: document.getElementById('toast-container')
-};
+// 2. Variáveis de Estado da Aplicação
+let allConexoes = [];      // Guarda a lista completa de conexões vinda da API
+let allUnits = [];         // Guarda a lista de unidades para os formulários
+let currentIdForDelete = null; // Guarda o ID da conexão a ser excluída
 
-// --- Inicialização ---
+// --- Fim do Bloco de Configuração ---
+
+
+// --- Inicialização da Aplicação ---
+
+// 3. Ponto de Entrada: Executa quando o HTML está pronto
 document.addEventListener('DOMContentLoaded', initializePage);
 
+/**
+ * Função principal que inicializa a página.
+ */
 async function initializePage() {
-    bindEvents();
-    // Carrega tanto as conexões quanto as unidades em paralelo para otimizar
-    showLoadingState();
+    const elements = getDOMElements();
+    const eventHandlers = createEventHandlers(elements);
+    bindEvents(elements, eventHandlers);
+    
+    showLoadingState(elements);
     try {
+        // Carrega os dados de conexões e unidades em paralelo para mais performance
         await Promise.all([
-            loadConexoes(),
-            loadUnitsForSelects()
+            eventHandlers.handleLoadConexoes(),
+            eventHandlers.handleLoadUnits()
         ]);
-        showToast('Dados carregados com sucesso!', 'success');
+        showToast('Dados carregados com sucesso!', 'success', elements);
     } catch (error) {
-        showErrorState();
-        showToast('Erro ao carregar dados iniciais.', 'error');
+        showErrorState(elements, error);
+        showToast('Erro ao carregar dados iniciais.', 'error', elements);
     }
 }
 
-// --- Vinculação de Eventos ---
-function bindEvents() {
-    elements.searchInput.addEventListener('input', debounce(applyFilters, 300));
-    elements.sortBy.addEventListener('change', applyFilters);
-    
-    elements.addConexaoBtn.addEventListener('click', openAddModal);
-    elements.closeModalBtn.addEventListener('click', closeModal);
-    elements.cancelModalBtn.addEventListener('click', closeModal);
-    elements.conexaoForm.addEventListener('submit', handleFormSubmit);
-    
-    elements.cancelDeleteBtn.addEventListener('click', closeDeleteModal);
-    elements.confirmDeleteBtn.addEventListener('click', confirmDelete);
+// --- Funções de Lógica e Manipulação do DOM ---
 
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            closeModal();
-            closeDeleteModal();
+/**
+ * Agrupa todas as seleções de elementos do DOM em um só lugar.
+ * @returns {object} Um objeto com referências para os elementos do HTML.
+ */
+function getDOMElements() {
+    return {
+        // Tabela e Contagem
+        tableBody: document.getElementById('conexoes-table-body'),
+        countElement: document.getElementById('conexoes-count'),
+        // Filtros
+        searchInput: document.getElementById('search-unit-id'),
+        sortBy: document.getElementById('sort-by'),
+        // Botões
+        addConexaoBtn: document.getElementById('btn-add-conexao'),
+        // Modal de Criação
+        conexaoModal: document.getElementById('conexao-modal'),
+        conexaoForm: document.getElementById('conexao-form'),
+        origemSelect: document.getElementById('conexao-origem'),
+        destinoSelect: document.getElementById('conexao-destino'),
+        closeModalBtn: document.getElementById('close-modal'),
+        cancelModalBtn: document.getElementById('cancel-modal'),
+        // Modal de Exclusão
+        deleteModal: document.getElementById('delete-modal'),
+        cancelDeleteBtn: document.getElementById('cancel-delete'),
+        confirmDeleteBtn: document.getElementById('confirm-delete'),
+        // Notificações
+        toastContainer: document.getElementById('toast-container'),
+    };
+}
+
+/**
+ * Cria as funções que manipularão os eventos.
+ * @param {object} elements - O objeto de elementos do DOM.
+ * @returns {object} Um objeto com as funções de evento.
+ */
+function createEventHandlers(elements) {
+    const handlers = {
+        // Carrega as conexões da API e renderiza a tabela
+        handleLoadConexoes: async () => {
+            allConexoes = await fetchAPI(CONEXOES_API_URL);
+            handlers.applyFiltersAndSort();
+        },
+        // Carrega as unidades e popula os seletores do modal
+        handleLoadUnits: async () => {
+            allUnits = await fetchAPI(UNIDADES_API_URL);
+            populateSelects(elements, allUnits);
+        },
+        // Aplica os filtros e a ordenação atuais e renderiza a tabela
+        applyFiltersAndSort: () => {
+            const searchTerm = elements.searchInput.value.toLowerCase().trim();
+            const sortBy = elements.sortBy.value;
+
+            const filtered = allConexoes.filter(c => {
+                if (!searchTerm) return true;
+                const originId = c.idOrigem?.toString() || '';
+                const destId = c.idDestino?.toString() || '';
+                return originId.includes(searchTerm) || destId.includes(searchTerm);
+            });
+
+            filtered.sort((a, b) => {
+                switch (sortBy) {
+                    case 'origem': return a.idOrigem - b.idOrigem;
+                    case 'destino': return a.idDestino - b.idDestino;
+                    default: return a.id - b.id;
+                }
+            });
+            
+            renderTable(elements, filtered, allUnits);
+            updateCount(elements, filtered.length);
+        },
+        // Lida com o envio do formulário de criação
+        handleFormSubmit: async (event) => {
+            event.preventDefault();
+            const origemId = elements.origemSelect.value;
+            const destinoId = elements.destinoSelect.value;
+
+            if (!origemId || !destinoId) {
+                return showToast('Por favor, selecione a origem e o destino.', 'error', elements);
+            }
+            if (origemId === destinoId) {
+                return showToast('A origem e o destino não podem ser iguais.', 'error', elements);
+            }
+
+            try {
+                const newConnectionData = {
+                    unidadeOrigemId: parseInt(origemId),
+                    unidadeDestinoId: parseInt(destinoId)
+                };
+                await fetchAPI(CONEXOES_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newConnectionData),
+                });
+                await handlers.handleLoadConexoes();
+                showToast('Conexão criada com sucesso!', 'success', elements);
+                closeModal(elements.conexaoModal);
+            } catch (error) {
+                showToast('Falha ao criar conexão.', 'error', elements);
+                console.error("Erro ao criar conexão:", error);
+            }
+        },
+        // Abre o modal de exclusão
+        handleOpenDeleteModal: (id) => {
+            currentIdForDelete = id;
+            openModal(elements.deleteModal);
+        },
+        // Confirma e executa a exclusão
+        handleConfirmDelete: async () => {
+            if (!currentIdForDelete) return;
+            try {
+                await fetchAPI(`${CONEXOES_API_URL}/${currentIdForDelete}`, { method: 'DELETE' });
+                await handlers.handleLoadConexoes();
+                showToast('Conexão excluída com sucesso!', 'success', elements);
+            } catch (error) {
+                showToast('Falha ao excluir conexão.', 'error', elements);
+                console.error("Erro ao excluir conexão:", error);
+            } finally {
+                closeModal(elements.deleteModal);
+                currentIdForDelete = null;
+            }
+        },
+    };
+    return handlers;
+}
+
+/**
+ * Vincula todas as funções de evento aos elementos do DOM.
+ * @param {object} elements - Objeto de elementos do DOM.
+ * @param {object} handlers - Objeto com as funções de evento.
+ */
+function bindEvents(elements, handlers) {
+    elements.searchInput.addEventListener('input', debounce(handlers.applyFiltersAndSort, 300));
+    elements.sortBy.addEventListener('change', handlers.applyFiltersAndSort);
+    
+    elements.addConexaoBtn.addEventListener('click', () => openModal(elements.conexaoModal));
+    elements.closeModalBtn.addEventListener('click', () => closeModal(elements.conexaoModal));
+    elements.cancelModalBtn.addEventListener('click', () => closeModal(elements.conexaoModal));
+    elements.conexaoForm.addEventListener('submit', handlers.handleFormSubmit);
+    
+    elements.cancelDeleteBtn.addEventListener('click', () => closeModal(elements.deleteModal));
+    elements.confirmDeleteBtn.addEventListener('click', handlers.handleConfirmDelete);
+
+    // Delegação de eventos para o botão de excluir na tabela
+    elements.tableBody.addEventListener('click', (event) => {
+        const deleteButton = event.target.closest('button[data-action="delete"]');
+        if (deleteButton) {
+            const id = parseInt(deleteButton.dataset.id, 10);
+            handlers.handleOpenDeleteModal(id);
         }
     });
 }
 
-// --- Funções de API ---
-async function loadConexoes() {
-    const response = await fetch(conexoesApiUrl);
-    if (!response.ok) throw new Error('Falha ao buscar conexões');
-    allConexoes = await response.json();
-    applyFilters();
-}
 
-async function loadUnitsForSelects() {
-    const response = await fetch(unidadesApiUrl);
-    if (!response.ok) throw new Error('Falha ao buscar unidades para os seletores');
-    allUnits = await response.json();
-    populateSelects();
-}
+// --- Funções de Renderização e UI ---
 
-async function createConexao(origemId, destinoId) {
-    const response = await fetch(`${conexoesApiUrl}?origemId=${origemId}&destinoId=${destinoId}`, {
-        method: 'POST'
-    });
-    if (!response.ok) throw new Error('Falha ao criar conexão');
-    await loadConexoes(); // Recarrega a lista
-}
-
-async function deleteConexao(id) {
-    const response = await fetch(`${conexoesApiUrl}/${id}`, {
-        method: 'DELETE'
-    });
-    if (!response.ok) throw new Error('Falha ao excluir conexão');
-    await loadConexoes(); // Recarrega a lista
-}
-
-// --- Lógica de Filtragem e Ordenação ---
-function applyFilters() {
-    const searchTerm = elements.searchInput.value.trim();
-    const sortBy = elements.sortBy.value;
-
-    filteredConexoes = allConexoes.filter(conexao => {
-        if (!searchTerm) return true;
-        // Verifica se o ID buscado corresponde à origem OU ao destino
-        return conexao.origem.id.toString() === searchTerm || conexao.destino.id.toString() === searchTerm;
-    });
-
-    filteredConexoes.sort((a, b) => {
-        switch (sortBy) {
-            case 'origem': return a.origem.id - b.origem.id;
-            case 'destino': return a.destino.id - b.destino.id;
-            default: return a.id - b.id; // Ordenar por ID da conexão por padrão
-        }
-    });
-
-    renderConexoes();
-    updateConexoesCount();
-}
-
-// --- Renderização na Tela ---
-function renderConexoes() {
-    const tbody = elements.conexoesTableBody;
-    if (filteredConexoes.length === 0) {
-        showEmptyState();
+/**
+ * Preenche a tabela com os dados das conexões.
+ * @param {object} elements - Objeto de elementos do DOM.
+ * @param {Array} conexoes - A lista de conexões a ser renderizada.
+ * @param {Array} units - A lista de todas as unidades para encontrar os endereços.
+ */
+function renderTable(elements, conexoes, units) {
+    if (conexoes.length === 0) {
+        showEmptyState(elements);
         return;
     }
+    
+    const unitsMap = new Map(units.map(u => [u.id, u.endereco]));
 
-    tbody.innerHTML = filteredConexoes.map(conexao => `
-        <tr class="hover:bg-gray-50 transition-colors">
+    elements.tableBody.innerHTML = conexoes.map(conexao => `
+        <tr class="hover:bg-gray-50">
             <td class="px-6 py-4 text-sm font-medium text-gray-900">#${conexao.id}</td>
             <td class="px-6 py-4 text-sm text-gray-700">
-                <span class="font-bold">ID: ${conexao.origem.id}</span> - ${escapeHtml(conexao.origem.endereco)}
+                <span class="font-bold">ID: ${conexao.idOrigem}</span> - ${escapeHtml(unitsMap.get(conexao.idOrigem) || 'N/A')}
             </td>
             <td class="px-6 py-4 text-sm text-gray-700">
-                <span class="font-bold">ID: ${conexao.destino.id}</span> - ${escapeHtml(conexao.destino.endereco)}
+                <span class="font-bold">ID: ${conexao.idDestino}</span> - ${escapeHtml(unitsMap.get(conexao.idDestino) || 'N/A')}
             </td>
             <td class="px-6 py-4 text-right">
-                <button 
-                    onclick="openDeleteModal(${conexao.id})"
-                    class="text-red-600 hover:text-red-900 transition-colors p-1"
-                    title="Excluir conexão"
-                >
+                <button data-action="delete" data-id="${conexao.id}" title="Excluir conexão" class="text-red-600 hover:text-red-900 p-1">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
@@ -161,118 +235,66 @@ function renderConexoes() {
     `).join('');
 }
 
-function updateConexoesCount() {
-    elements.conexoesCount.textContent = filteredConexoes.length;
-}
-
-// --- Estados da Tabela (Carregando, Vazio, Erro) ---
-function showLoadingState() {
-    elements.conexoesTableBody.innerHTML = `<tr><td colspan="4" class="text-center p-12 text-gray-500">Carregando...</td></tr>`;
-}
-
-function showEmptyState() {
-    elements.conexoesTableBody.innerHTML = `<tr><td colspan="4" class="text-center p-12 text-gray-500">Nenhuma conexão encontrada.</td></tr>`;
-}
-
-function showErrorState() {
-    elements.conexoesTableBody.innerHTML = `<tr><td colspan="4" class="text-center p-12 text-red-500">Erro ao carregar os dados.</td></tr>`;
-}
-
-
-// --- Lógica do Modal ---
-function populateSelects() {
-    elements.origemSelect.innerHTML = '<option value="">Selecione a unidade de origem</option>';
-    elements.destinoSelect.innerHTML = '<option value="">Selecione a unidade de destino</option>';
+/**
+ * Popula os menus de seleção (origem e destino) no modal.
+ * @param {object} elements - Objeto de elementos do DOM.
+ * @param {Array} units - A lista de unidades para popular os seletores.
+ */
+function populateSelects(elements, units) {
+    const createOption = unit => `<option value="${unit.id}">ID: ${unit.id} - ${escapeHtml(unit.endereco)}</option>`;
+    const optionsHtml = units.map(createOption).join('');
     
-    allUnits.forEach(unit => {
-        const optionHtml = `<option value="${unit.id}">ID: ${unit.id} - ${escapeHtml(unit.endereco)}</option>`;
-        elements.origemSelect.innerHTML += optionHtml;
-        elements.destinoSelect.innerHTML += optionHtml;
-    });
+    elements.origemSelect.innerHTML = `<option value="">Selecione a unidade de origem</option>${optionsHtml}`;
+    elements.destinoSelect.innerHTML = `<option value="">Selecione a unidade de destino</option>${optionsHtml}`;
 }
 
-function openAddModal() {
-    elements.conexaoForm.reset();
-    elements.conexaoModal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
+function updateCount(elements, count) {
+    elements.countElement.textContent = count;
 }
 
-function closeModal() {
-    elements.conexaoModal.classList.add('hidden');
-    document.body.style.overflow = 'auto';
+function showLoadingState(elements) {
+    elements.tableBody.innerHTML = `<tr><td colspan="4" class="text-center p-12 text-gray-500">Carregando...</td></tr>`;
 }
 
-function openDeleteModal(id) {
-    currentDeletingId = id;
-    elements.deleteModal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
+function showEmptyState(elements) {
+    elements.tableBody.innerHTML = `<tr><td colspan="4" class="text-center p-12 text-gray-500">Nenhuma conexão encontrada.</td></tr>`;
 }
 
-function closeDeleteModal() {
-    elements.deleteModal.classList.add('hidden');
-    document.body.style.overflow = 'auto';
-    currentDeletingId = null;
+function showErrorState(elements, error) {
+    console.error("Erro na API:", error);
+    elements.tableBody.innerHTML = `<tr><td colspan="4" class="text-center p-12 text-red-500">Erro ao carregar os dados.</td></tr>`;
 }
 
-async function handleFormSubmit(e) {
-    e.preventDefault();
-    const origemId = elements.origemSelect.value;
-    const destinoId = elements.destinoSelect.value;
-
-    if (!origemId || !destinoId) {
-        showToast('Por favor, selecione a origem e o destino.', 'error');
-        return;
-    }
-    if (origemId === destinoId) {
-        showToast('A origem e o destino não podem ser iguais.', 'error');
-        return;
-    }
-
-    try {
-        await createConexao(origemId, destinoId);
-        showToast('Conexão criada com sucesso!', 'success');
-        closeModal();
-    } catch (error) {
-        console.error("Erro no formulário:", error);
-        showToast('Não foi possível criar a conexão.', 'error');
-    }
-}
-
-async function confirmDelete() {
-    if (!currentDeletingId) return;
-
-    try {
-        await deleteConexao(currentDeletingId);
-        showToast('Conexão excluída com sucesso!', 'success');
-    } catch (error) {
-        console.error("Erro ao deletar:", error);
-        showToast('Não foi possível excluir a conexão.', 'error');
-    } finally {
-        closeDeleteModal();
-    }
-}
 
 // --- Funções Utilitárias ---
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
+
+/**
+ * Função genérica para fazer requisições à API.
+ * @param {string} url - A URL da API.
+ * @param {object} options - As opções da requisição fetch.
+ * @returns {Promise<any>} O resultado JSON da requisição.
+ */
+async function fetchAPI(url, options = {}) {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(`Falha na requisição: ${response.status} ${response.statusText} - ${errorBody}`);
+    }
+    // Retorna um JSON vazio se a resposta for 204 No Content (como em um DELETE)
+    return response.status === 204 ? {} : response.json();
 }
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+function openModal(modalElement) {
+    modalElement.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
 }
 
-function showToast(message, type = 'info') {
-    // Implementação do Toast pode ser copiada do admin-script.js original
+function closeModal(modalElement) {
+    modalElement.classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+
+function showToast(message, type = 'info', elements) {
     const toast = document.createElement('div');
     const colors = { info: 'bg-blue-500', success: 'bg-green-500', error: 'bg-red-500' };
     toast.className = `${colors[type]} text-white px-4 py-3 rounded-lg shadow-lg`;
@@ -281,5 +303,16 @@ function showToast(message, type = 'info') {
     setTimeout(() => toast.remove(), 3000);
 }
 
-// Disponibiliza funções no escopo global para serem chamadas pelo onclick no HTML
-window.openDeleteModal = openDeleteModal;
+function debounce(func, wait) {
+    let timeout;
+    return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+
+function escapeHtml(text = '') {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
